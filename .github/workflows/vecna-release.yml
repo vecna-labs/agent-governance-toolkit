@@ -1,9 +1,11 @@
 name: vecna-release
 
 # Builds and publishes the Vecna ACS engine artifacts: the vecna_acs_engine
-# PyO3 wheels, the acs_engine.h C header + linux staticlibs for the Go
-# binding, and a pinned source snapshot of the conformance suite and stock
-# Rego libs. Triggered by tagging this fork; never runs on upstream.
+# PyO3 wheels, the acs_engine.h C header + linux/darwin staticlibs for the Go
+# binding (darwin arm64 is for macOS dev-machine builds/tests, not for
+# production linux deploys), and a pinned source snapshot of the conformance
+# suite and stock Rego libs. Triggered by tagging this fork; never runs on
+# upstream.
 on:
   push:
     tags:
@@ -59,6 +61,9 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-24.04-arm
             asset: libacs_engine-linux-arm64.a
+          - target: aarch64-apple-darwin
+            runner: macos-14
+            asset: libacs_engine-darwin-arm64.a
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -122,6 +127,7 @@ jobs:
 
           mv artifacts/staticlib-x86_64-unknown-linux-gnu/libacs_engine-linux-amd64.a out/
           mv artifacts/staticlib-aarch64-unknown-linux-gnu/libacs_engine-linux-arm64.a out/
+          mv artifacts/staticlib-aarch64-apple-darwin/libacs_engine-darwin-arm64.a out/
           mv artifacts/header/acs_engine.h out/
           mv artifacts/src/acs-src.tar.gz out/
 

@@ -57,9 +57,12 @@ matching `v*-vecna.*`):
   `aarch64-unknown-linux-gnu`, both `manylinux: 2_28`; `aarch64-apple-darwin`
   native on `macos-14`), building `policy-engine/sdk/python`.
 - `staticlib`: plain `cargo build --release --target <triple>` for
-  `policy-engine/core` on native `ubuntu-latest` (amd64) and
-  `ubuntu-24.04-arm` (arm64, GitHub-hosted, free on this public repo) — no
-  cross-compilation needed.
+  `policy-engine/core` on native `ubuntu-latest` (amd64), `ubuntu-24.04-arm`
+  (arm64, GitHub-hosted, free on this public repo), and `macos-14` (arm64) —
+  no cross-compilation needed anywhere in this matrix. The macOS leg exists
+  so the vecna monorepo's Go binding tests can link the staticlib locally on
+  macOS arm64 dev machines; it is not a production deploy target (Warden
+  ships on Linux).
 - `header`: one `cbindgen` run (config above) producing `acs_engine.h`.
 - `src`: `git archive` scoped to `policy-engine/tests/conformance/` (the
   conformance suite) and `policy-engine/policy/` (stock Rego libs under
@@ -78,6 +81,7 @@ vecna_acs_engine-<version>-cp311-abi3-manylinux_2_28_aarch64.whl
 vecna_acs_engine-<version>-cp311-abi3-macosx_11_0_arm64.whl
 libacs_engine-linux-amd64.a
 libacs_engine-linux-arm64.a
+libacs_engine-darwin-arm64.a
 acs_engine.h
 acs-src.tar.gz
 SHA256SUMS
