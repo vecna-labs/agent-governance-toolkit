@@ -64,16 +64,18 @@ matching `v*-vecna.*`):
 - `src`: `git archive` scoped to `policy-engine/tests/conformance/` (the
   conformance suite) and `policy-engine/policy/` (stock Rego libs under
   `lib/`, Cedar libs under `cedar-lib/`) → `acs-src.tar.gz`.
-- `release`: downloads everything, renames to the fixed asset names below,
-  writes `SHA256SUMS`, publishes one GitHub release named after the tag.
+- `release`: downloads everything, writes `SHA256SUMS`, publishes one GitHub
+  release named after the tag. The wheels are published under whatever
+  filename `maturin` actually built them as — see the naming note below.
 
-**Published asset names** (fixed — later Vecna builds pin against these
-exact strings, not against whatever maturin/cargo would name them natively):
+**Published asset names** (`libacs_engine-*`, `acs_engine.h`, `acs-src.tar.gz`,
+and `SHA256SUMS` are fixed strings; the three wheel names carry maturin's
+real platform tag, `<version>` is whatever the tag says, e.g. `5.0.0`):
 
 ```
-vecna_acs_engine-<version>-cp312-cp312-manylinux_2_28_x86_64.whl
-vecna_acs_engine-<version>-cp312-cp312-manylinux_2_28_aarch64.whl
-vecna_acs_engine-<version>-cp312-cp312-macosx_11_0_arm64.whl
+vecna_acs_engine-<version>-cp311-abi3-manylinux_2_28_x86_64.whl
+vecna_acs_engine-<version>-cp311-abi3-manylinux_2_28_aarch64.whl
+vecna_acs_engine-<version>-cp311-abi3-macosx_11_0_arm64.whl
 libacs_engine-linux-amd64.a
 libacs_engine-linux-arm64.a
 acs_engine.h
@@ -81,17 +83,19 @@ acs-src.tar.gz
 SHA256SUMS
 ```
 
-**Naming caveat — read before re-pinning to a different Python floor.** The
-crate builds with `pyo3` feature `abi3-py311` (the upstream default), so
-`maturin` natively tags the wheel `cp311-abi3` — one build is ABI-compatible
-with CPython 3.11, 3.12, 3.13, ... The release workflow renames that file to
-`cp312-cp312` to match the fixed asset-name contract above. This is safe only
-because the consuming environment pins exactly CPython 3.12: `pip` treats
-`cp312-cp312` as an exact-version tag, not an abi3 tag, so installing this
-file under 3.11 or 3.13 will be rejected even though the compiled extension
-would actually run fine there. If Vecna's executor image ever moves off
-CPython 3.12 exactly, re-tag the renamed file to match (or drop the
-relabeling and let downstream pin on the true `cp311-abi3` tag instead).
+**Naming note — do not relabel the wheel tag.** The crate builds with `pyo3`
+feature `abi3-py311` (the upstream default, untouched), so `maturin` tags the
+wheel `cp311-abi3`: one build that is genuinely ABI-compatible with CPython
+3.11, 3.12, 3.13, and later. An earlier version of this workflow renamed the
+published file to a `cp312-cp312` tag to match a filename contract handed
+down from planning. That was a defect, not a simplification: `pip` enforces
+wheel tags at install time, and `cp312-cp312` is an *exact*-interpreter tag,
+not an abi3 tag — it made the (otherwise perfectly portable) wheel
+uninstallable under any CPython except precisely 3.12, confirmed by
+reproducing the failure locally under 3.13 before the fix. Downstream
+consumers must pin on the real `cp311-abi3` filename and let `pip`'s normal
+abi3 tag matching do its job across CPython versions; do not reintroduce a
+relabeling step here.
 
 **Bumping upstream:** pick the new upstream `main` commit (or a real
 `vX.Y.Z` tag once upstream cuts one), diff it against the current pin commit

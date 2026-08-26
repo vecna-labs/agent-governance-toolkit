@@ -109,12 +109,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out
-          version="${GITHUB_REF_NAME%-vecna.*}"
-          version="${version#v}"
 
-          mv "artifacts/wheel-x86_64-unknown-linux-gnu"/*.whl "out/vecna_acs_engine-${version}-cp312-cp312-manylinux_2_28_x86_64.whl"
-          mv "artifacts/wheel-aarch64-unknown-linux-gnu"/*.whl "out/vecna_acs_engine-${version}-cp312-cp312-manylinux_2_28_aarch64.whl"
-          mv "artifacts/wheel-aarch64-apple-darwin"/*.whl "out/vecna_acs_engine-${version}-cp312-cp312-macosx_11_0_arm64.whl"
+          # Publish the wheels under the filenames maturin actually built them
+          # as (abi3-py311 -> "cp311-abi3" tag). Do NOT relabel to a
+          # different interpreter tag: pip enforces wheel tags at install
+          # time, so a renamed "cpXYZ-cpXYZ" tag would make the wheel
+          # uninstallable under any CPython except that exact version, even
+          # though the abi3 build is genuinely compatible with 3.11+.
+          mv artifacts/wheel-x86_64-unknown-linux-gnu/*.whl out/
+          mv artifacts/wheel-aarch64-unknown-linux-gnu/*.whl out/
+          mv artifacts/wheel-aarch64-apple-darwin/*.whl out/
 
           mv artifacts/staticlib-x86_64-unknown-linux-gnu/libacs_engine-linux-amd64.a out/
           mv artifacts/staticlib-aarch64-unknown-linux-gnu/libacs_engine-linux-arm64.a out/
