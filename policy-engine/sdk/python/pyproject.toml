@@ -3,9 +3,9 @@ requires = ["maturin==1.8.7"]
 build-backend = "maturin"
 
 [project]
-name = "agent-control-specification"
-version = "0.3.1b1"
-description = "Thin Python SDK surface for the stateless Agent Control Specification runtime"
+name = "vecna_acs_engine"
+version = "5.0.0"
+description = "Vecna fork of the Agent Control Specification Python SDK (thin surface over the ACS runtime)"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -58,5 +58,5 @@ realpkg-tests = [
 
 [tool.maturin]
 features = ["pyo3/extension-module", "pyo3/abi3-py311"]
-module-name = "agent_control_specification._native"
+module-name = "vecna_acs_engine._native"
 python-source = "."

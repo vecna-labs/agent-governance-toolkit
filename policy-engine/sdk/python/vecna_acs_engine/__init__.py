@@ -1,4 +1,6 @@
-"""Thin Python SDK surface for Agent Control Specification."""
+"""Thin Python SDK surface for Agent Control Specification (Vecna fork)."""
+
+__version__ = "5.0.0"
 
 from ._adapters import (
     AdapterUnsupportedError,
@@ -85,6 +87,7 @@ from .validation import (
 )
 
 __all__ = [
+    "__version__",
     "DEFAULT_APPROVAL_TIMEOUT_SECONDS",
     "HostSession",
     "SnapshotBuilder",

@@ -37,10 +37,10 @@ def parse_manifest(manifest: str | bytes) -> JsonValue:
     """Parse manifest text with the same serde_yaml implementation as the Rust runtime."""
 
     try:
-        from agent_control_specification import _native
+        from vecna_acs_engine import _native
     except ImportError as exc:
         raise ImportError(
-            "The agent_control_specification._native extension is not built. "
+            "The vecna_acs_engine._native extension is not built. "
             "Install this package with maturin or build the wheel before parsing manifests."
         ) from exc
     manifest_str = manifest.decode("utf-8") if isinstance(manifest, bytes) else manifest
@@ -53,10 +53,10 @@ def validate_manifest(manifest: str | bytes) -> None:
     """Validate manifest text with the Rust runtime's typed manifest contract."""
 
     try:
-        from agent_control_specification import _native
+        from vecna_acs_engine import _native
     except ImportError as exc:
         raise ImportError(
-            "The agent_control_specification._native extension is not built. "
+            "The vecna_acs_engine._native extension is not built. "
             "Install this package with maturin or build the wheel before validating manifests."
         ) from exc
     manifest_str = manifest.decode("utf-8") if isinstance(manifest, bytes) else manifest
@@ -69,10 +69,10 @@ def validate_manifest_overlay(manifest: str | bytes) -> None:
     """Validate resolution-independent fields on a partial manifest."""
 
     try:
-        from agent_control_specification import _native
+        from vecna_acs_engine import _native
     except ImportError as exc:
         raise ImportError(
-            "The agent_control_specification._native extension is not built. "
+            "The vecna_acs_engine._native extension is not built. "
             "Install this package with maturin or build the wheel before validating manifests."
         ) from exc
     manifest_str = manifest.decode("utf-8") if isinstance(manifest, bytes) else manifest
@@ -170,10 +170,10 @@ class NativeRuntimeClient:
             return
 
         try:
-            from agent_control_specification import _native
+            from vecna_acs_engine import _native
         except ImportError as exc:
             raise ImportError(
-                "The agent_control_specification._native extension is not built. "
+                "The vecna_acs_engine._native extension is not built. "
                 "Install this package with maturin or build the wheel before using NativeRuntimeClient."
             ) from exc
 

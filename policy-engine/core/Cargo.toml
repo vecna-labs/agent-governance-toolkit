@@ -10,7 +10,7 @@ keywords = ["agents", "policy", "security", "runtime"]
 categories = ["config"]
 
 [lib]
-crate-type = ["lib", "cdylib"]
+crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
 # AGT M2.S5 D7 runtime split. The default surface is the historical core plus

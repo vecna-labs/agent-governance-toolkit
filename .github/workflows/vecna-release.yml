@@ -1,0 +1,134 @@
+name: vecna-release
+
+# Builds and publishes the Vecna ACS engine artifacts: the vecna_acs_engine
+# PyO3 wheels, the acs_engine.h C header + linux staticlibs for the Go
+# binding, and a pinned source snapshot of the conformance suite and stock
+# Rego libs. Triggered by tagging this fork; never runs on upstream.
+on:
+  push:
+    tags:
+      - "v*-vecna.*"
+
+permissions:
+  contents: write
+
+env:
+  PY_CRATE_DIR: policy-engine/sdk/python
+  CORE_CRATE_DIR: policy-engine/core
+
+jobs:
+  wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            manylinux: "2_28"
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            manylinux: "2_28"
+          - target: aarch64-apple-darwin
+            runner: macos-14
+            manylinux: "auto"
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: --release --manifest-path ${{ env.PY_CRATE_DIR }}/Cargo.toml --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.target }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  staticlib:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            asset: libacs_engine-linux-amd64.a
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            asset: libacs_engine-linux-arm64.a
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo build --release --target ${{ matrix.target }} --manifest-path ${{ env.CORE_CRATE_DIR }}/Cargo.toml
+      - run: cp policy-engine/target/${{ matrix.target }}/release/libagent_control_specification_core.a ${{ matrix.asset }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staticlib-${{ matrix.target }}
+          path: ${{ matrix.asset }}
+          if-no-files-found: error
+
+  header:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cbindgen --locked
+      - run: cbindgen --config ${{ env.CORE_CRATE_DIR }}/cbindgen.toml --crate agent_control_specification_core --output acs_engine.h ${{ env.CORE_CRATE_DIR }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: header
+          path: acs_engine.h
+          if-no-files-found: error
+
+  src:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git archive --format=tar.gz --output=acs-src.tar.gz HEAD -- policy-engine/tests/conformance policy-engine/policy
+      - uses: actions/upload-artifact@v4
+        with:
+          name: src
+          path: acs-src.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: [wheels, staticlib, header, src]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Assemble release assets
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          version="${GITHUB_REF_NAME%-vecna.*}"
+          version="${version#v}"
+
+          mv "artifacts/wheel-x86_64-unknown-linux-gnu"/*.whl "out/vecna_acs_engine-${version}-cp312-cp312-manylinux_2_28_x86_64.whl"
+          mv "artifacts/wheel-aarch64-unknown-linux-gnu"/*.whl "out/vecna_acs_engine-${version}-cp312-cp312-manylinux_2_28_aarch64.whl"
+          mv "artifacts/wheel-aarch64-apple-darwin"/*.whl "out/vecna_acs_engine-${version}-cp312-cp312-macosx_11_0_arm64.whl"
+
+          mv artifacts/staticlib-x86_64-unknown-linux-gnu/libacs_engine-linux-amd64.a out/
+          mv artifacts/staticlib-aarch64-unknown-linux-gnu/libacs_engine-linux-arm64.a out/
+          mv artifacts/header/acs_engine.h out/
+          mv artifacts/src/acs-src.tar.gz out/
+
+          cd out
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" out/* \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "Vecna ACS engine build for AGT M2. See VECNA.md for the fork policy and re-sync procedure." \
+            --repo "${GITHUB_REPOSITORY}"
