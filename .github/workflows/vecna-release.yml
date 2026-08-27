@@ -70,7 +70,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - run: cargo build --release --target ${{ matrix.target }} --manifest-path ${{ env.CORE_CRATE_DIR }}/Cargo.toml
+      # default-dispatchers (on top of the default opa+cedar features) makes
+      # acs_builder_enable_default_annotator_dispatcher / _policy_dispatcher
+      # linkable — without it acs_builder_build fails "annotator dispatcher
+      # not registered" for every valid manifest, since the opaque-struct
+      # callback ABI (acs_builder_register_*_dispatcher) can't be called from
+      # C/cgo at all. See cloud/internal/acsengine/README.md in the vecna repo.
+      - run: cargo build --release --target ${{ matrix.target }} --features default-dispatchers --manifest-path ${{ env.CORE_CRATE_DIR }}/Cargo.toml
       - run: cp policy-engine/target/${{ matrix.target }}/release/libagent_control_specification_core.a ${{ matrix.asset }}
       - uses: actions/upload-artifact@v4
         with:

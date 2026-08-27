@@ -46,6 +46,15 @@ configured by `gh repo fork` but nothing is ever pushed there.
    logger names, the OTel meter name, a default guardrail-name string) was
    touched; those are cosmetic identifiers, not import paths.
 5. `.github/workflows/vecna-release.yml` — new, see below.
+6. `staticlib` job: builds `policy-engine/core` with `--features
+   default-dispatchers` (in addition to that crate's own default features
+   `opa`+`cedar`). This is the fix for a real ABI gap found by the Go
+   binding's own conformance testing downstream (see "Naming note"'s sibling
+   note under the release recipe below) — the wheels needed no equivalent
+   change, since `policy-engine/sdk/python/Cargo.toml` already lists
+   `default-dispatchers` (plus several model-specific dispatcher features) in
+   its `agent_control_specification_core` dependency's `features = [...]`,
+   so Cargo's feature unification already builds it in for every wheel.
 
 The rename exists for one reason: a stock upstream `agent-control-specification`
 wheel must never silently satisfy a `vecna_acs_engine` pin.
@@ -56,13 +65,20 @@ matching `v*-vecna.*`):
 - `wheels`: `PyO3/maturin-action` × 3 targets (`x86_64-unknown-linux-gnu` +
   `aarch64-unknown-linux-gnu`, both `manylinux: 2_28`; `aarch64-apple-darwin`
   native on `macos-14`), building `policy-engine/sdk/python`.
-- `staticlib`: plain `cargo build --release --target <triple>` for
-  `policy-engine/core` on native `ubuntu-latest` (amd64), `ubuntu-24.04-arm`
-  (arm64, GitHub-hosted, free on this public repo), and `macos-14` (arm64) —
-  no cross-compilation needed anywhere in this matrix. The macOS leg exists
-  so the vecna monorepo's Go binding tests can link the staticlib locally on
-  macOS arm64 dev machines; it is not a production deploy target (Warden
-  ships on Linux).
+- `staticlib`: plain `cargo build --release --target <triple> --features
+  default-dispatchers` for `policy-engine/core` on native `ubuntu-latest`
+  (amd64), `ubuntu-24.04-arm` (arm64, GitHub-hosted, free on this public
+  repo), and `macos-14` (arm64) — no cross-compilation needed anywhere in
+  this matrix. The macOS leg exists so the vecna monorepo's Go binding tests
+  can link the staticlib locally on macOS arm64 dev machines; it is not a
+  production deploy target (Warden ships on Linux). `default-dispatchers` is
+  on top of `policy-engine/core`'s existing default features (`opa`,
+  `cedar`) — see the ABI note below; without it, `acs_builder_build` fails
+  "annotator dispatcher not registered" for every valid manifest, because
+  the only other path to a working dispatcher (registering a custom one via
+  `acs_builder_register_*_dispatcher`) takes its callback as an
+  incomplete-in-the-generated-header opaque struct and cannot be called from
+  C/cgo at all.
 - `header`: one `cbindgen` run (config above) producing `acs_engine.h`.
 - `src`: `git archive` scoped to `policy-engine/tests/conformance/` (the
   conformance suite) and `policy-engine/policy/` (stock Rego libs under
