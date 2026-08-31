@@ -4,7 +4,7 @@ import asyncio
 
 from langchain_openai import AzureChatOpenAI
 
-from agent_control_specification import InterventionPoint, guard_langchain_runnable
+from vecna_acs_engine import InterventionPoint, guard_langchain_runnable
 
 from _common import assert_blocked, control, require_azure
 

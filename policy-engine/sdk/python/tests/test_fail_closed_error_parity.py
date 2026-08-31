@@ -6,10 +6,10 @@ import re
 import unittest
 from pathlib import Path
 
-from agent_control_specification import AgentControl, Decision
+from vecna_acs_engine import AgentControl, Decision
 
 try:
-    from agent_control_specification import _native  # noqa: F401
+    from vecna_acs_engine import _native  # noqa: F401
 except ImportError:
     _NATIVE_AVAILABLE = False
 else:
@@ -51,7 +51,7 @@ def control_for_case(case):
     return AgentControl.from_native(case["manifest_yaml"], FixtureAnnotator(case), FixturePolicy(case))
 
 
-@unittest.skipUnless(_NATIVE_AVAILABLE, "agent_control_specification._native extension is not built")
+@unittest.skipUnless(_NATIVE_AVAILABLE, "vecna_acs_engine._native extension is not built")
 class FailClosedErrorParityTests(unittest.TestCase):
     def test_native_runtime_fail_closed_errors_match_shared_fixture(self):
         self.assertEqual(len(FIXTURE["reserved_reasons"]), 12)

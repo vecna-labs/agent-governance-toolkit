@@ -4,7 +4,7 @@ import asyncio
 
 from openai import AsyncAzureOpenAI
 
-from agent_control_specification import InterventionPoint, guard_openai_client
+from vecna_acs_engine import InterventionPoint, guard_openai_client
 
 from _common import assert_blocked, control, require_azure
 

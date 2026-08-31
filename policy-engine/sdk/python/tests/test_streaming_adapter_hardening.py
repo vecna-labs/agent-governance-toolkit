@@ -8,7 +8,7 @@ from collections import deque
 from dataclasses import replace
 from typing import Any
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AdapterUnsupportedError,
     AgentControl,
     AgentControlBlocked,
@@ -23,14 +23,14 @@ from agent_control_specification import (
     guard_openai_client,
     guard_tool,
 )
-from agent_control_specification._adapters import _sse
+from vecna_acs_engine._adapters import _sse
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 STREAMING = ROOT / "tests" / "conformance" / "streaming"
 MANIFEST = json.loads((STREAMING / "manifest.json").read_text())
 
 try:
-    from agent_control_specification import _native  # noqa: F401
+    from vecna_acs_engine import _native  # noqa: F401
 except ImportError:
     _NATIVE_AVAILABLE = False
 else:
@@ -437,7 +437,7 @@ class StreamingAdapterHardeningTests(unittest.IsolatedAsyncioTestCase):
             )
 
 
-@unittest.skipUnless(_NATIVE_AVAILABLE, "agent_control_specification._native extension is not built")
+@unittest.skipUnless(_NATIVE_AVAILABLE, "vecna_acs_engine._native extension is not built")
 class AnnotatorOrderingStreamingTests(unittest.TestCase):
     def test_annotator_dispatch_precedes_policy_evaluation(self):
         manifest = """agent_control_specification_version: 0.3.1-beta

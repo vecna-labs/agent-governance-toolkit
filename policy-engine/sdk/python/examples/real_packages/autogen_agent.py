@@ -5,7 +5,7 @@ import asyncio
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 
-from agent_control_specification import InterventionPoint, guard_autogen_agent
+from vecna_acs_engine import InterventionPoint, guard_autogen_agent
 
 from _common import assert_blocked, control, require_azure
 

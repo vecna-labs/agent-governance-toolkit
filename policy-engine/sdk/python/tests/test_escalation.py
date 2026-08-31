@@ -5,7 +5,7 @@ from collections import deque
 
 from dataclasses import replace
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AgentControl,
     AgentControlBlocked,
     AgentControlSuspended,

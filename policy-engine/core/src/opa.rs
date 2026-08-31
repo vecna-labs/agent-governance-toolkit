@@ -17,17 +17,35 @@ use std::{
 
 pub const OPA_PATH_ENV: &str = "ACS_OPA_PATH";
 pub const OPA_TIMEOUT_ENV: &str = "ACS_OPA_TIMEOUT_MS";
+pub const OPA_SERVER_ENV: &str = "ACS_OPA_SERVER";
 const DEFAULT_OPA_TIMEOUT: Duration = Duration::from_secs(5);
 const OPA_DATA_KEYS: [&str; 2] = ["data", "data_paths"];
 const ERROR_OUTPUT_LIMIT: usize = 4096;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct OpaRegoRunner {
     executable: PathBuf,
     data_paths: Vec<PathBuf>,
     eval_timeout: Duration,
     limits: Limits,
+    server_mode: bool,
+    #[cfg(unix)]
+    servers: crate::opa_server::ServerCache,
 }
+
+// The server cache is runtime state, not configuration: two runners are the same
+// runner if they would evaluate the same way, whatever they have already spawned.
+impl PartialEq for OpaRegoRunner {
+    fn eq(&self, other: &Self) -> bool {
+        self.executable == other.executable
+            && self.data_paths == other.data_paths
+            && self.eval_timeout == other.eval_timeout
+            && self.limits == other.limits
+            && self.server_mode == other.server_mode
+    }
+}
+
+impl Eq for OpaRegoRunner {}
 
 impl OpaRegoRunner {
     pub fn new() -> Self {
@@ -36,6 +54,9 @@ impl OpaRegoRunner {
             data_paths: Vec::new(),
             eval_timeout: DEFAULT_OPA_TIMEOUT,
             limits: Limits::default(),
+            server_mode: false,
+            #[cfg(unix)]
+            servers: crate::opa_server::ServerCache::default(),
         }
     }
 
@@ -54,7 +75,33 @@ impl OpaRegoRunner {
         if let Some(timeout) = eval_timeout_from_environment() {
             runner = runner.with_eval_timeout(timeout);
         }
+        if matches!(
+            env::var(OPA_SERVER_ENV).ok().as_deref(),
+            Some("1") | Some("true")
+        ) {
+            runner = runner.with_server_mode(true);
+        }
         runner
+    }
+
+    /// Serve evaluations from a long-lived `opa run --server` child per policy
+    /// source set instead of forking `opa eval` each time. Unix-only; elsewhere the
+    /// flag is accepted and ignored. Any failure to reach a server falls back to the
+    /// exec path, so enabling this never changes an evaluation's outcome — only its
+    /// latency.
+    pub fn with_server_mode(mut self, server_mode: bool) -> Self {
+        self.server_mode = server_mode;
+        self
+    }
+
+    pub fn server_mode(&self) -> bool {
+        self.server_mode
+    }
+
+    #[doc(hidden)]
+    #[cfg(unix)]
+    pub fn active_server_pids(&self) -> Vec<u32> {
+        self.servers.server_pids()
     }
 
     pub fn with_executable(mut self, executable: impl Into<PathBuf>) -> Self {
@@ -124,6 +171,10 @@ impl OpaRegoRunner {
     }
 
     pub fn evaluate(&self, invocation: &RegoPolicyInvocation) -> Result<JsonValue, RuntimeError> {
+        #[cfg(unix)]
+        if let Some(verdict) = self.server_evaluate(invocation)? {
+            return Ok(verdict);
+        }
         let output = self.run_opa_eval(invocation)?;
         if !output.status.success() {
             return Err(RuntimeError::PolicyInvocationFailed(format!(
@@ -133,6 +184,47 @@ impl OpaRegoRunner {
             )));
         }
         parse_opa_eval_output(&output.stdout)
+    }
+
+    /// `Ok(None)` means this evaluation is not server-eligible or no server could be
+    /// reached — the exec path decides, and reports the real error for a broken
+    /// policy source set. `Err` is reserved for outcomes exec mode would also fail:
+    /// an evaluation timeout or an OPA-reported error.
+    #[cfg(unix)]
+    fn server_evaluate(
+        &self,
+        invocation: &RegoPolicyInvocation,
+    ) -> Result<Option<JsonValue>, RuntimeError> {
+        use crate::opa_server::QueryFailure;
+
+        if !self.server_mode || invocation.bundle.is_some() || invocation.bundle_url.is_some() {
+            return Ok(None);
+        }
+        let Some(data_path) = data_api_path(&invocation.query) else {
+            return Ok(None);
+        };
+        let Ok(adapter_paths) = adapter_data_paths(&invocation.adapter_config) else {
+            return Ok(None);
+        };
+        let mut sources = self.data_paths.clone();
+        sources.extend(adapter_paths);
+        if sources.is_empty() {
+            return Ok(None);
+        }
+        let Some(server) = self.servers.lease(&self.executable, &sources) else {
+            return Ok(None);
+        };
+        match server.query(&data_path, &invocation.canonical_input, self.eval_timeout) {
+            Ok(value) => Ok(Some(value)),
+            Err(QueryFailure::Unavailable) => {
+                self.servers.evict(&sources, &server);
+                Ok(None)
+            }
+            Err(QueryFailure::Timeout(millis)) => Err(RuntimeError::PolicyInvocationFailed(
+                format!("failed to read OPA output: OPA eval exceeded timeout of {millis} ms"),
+            )),
+            Err(QueryFailure::Eval(detail)) => Err(RuntimeError::PolicyInvocationFailed(detail)),
+        }
     }
 
     fn run_opa_eval(&self, invocation: &RegoPolicyInvocation) -> Result<Output, RuntimeError> {
@@ -221,10 +313,25 @@ impl Drop for RemoteBundle {
     }
 }
 
-static REMOTE_BUNDLE_COUNTER: AtomicU64 = AtomicU64::new(0);
+/// The Data API document path for a query the server can answer: a plain
+/// `data.<ident>(.<ident>)*` reference and nothing else. Any richer Rego expression
+/// keeps the exec path, whose `opa eval` accepts arbitrary queries.
+fn data_api_path(query: &str) -> Option<String> {
+    let segments: Vec<&str> = query.strip_prefix("data.")?.split('.').collect();
+    let ident = |segment: &&str| {
+        !segment.is_empty()
+            && segment
+                .chars()
+                .enumerate()
+                .all(|(i, c)| c == '_' || c.is_ascii_alphabetic() || (i > 0 && c.is_ascii_digit()))
+    };
+    segments.iter().all(ident).then(|| segments.join("/"))
+}
 
-fn remote_bundle_token() -> String {
-    let count = REMOTE_BUNDLE_COUNTER.fetch_add(1, Ordering::Relaxed);
+static PRIVATE_DIR_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+pub(crate) fn private_dir_token() -> String {
+    let count = PRIVATE_DIR_COUNTER.fetch_add(1, Ordering::Relaxed);
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|elapsed| elapsed.as_nanos())
@@ -271,7 +378,7 @@ pub(crate) fn create_private_dir(path: &std::path::Path) -> std::io::Result<()> 
 /// Materialize verified bundle bytes into a fresh temp directory. Split from
 /// the network fetch so the temp directory lifecycle is unit testable.
 fn write_remote_bundle(body: &[u8]) -> Result<RemoteBundle, RuntimeError> {
-    let dir = env::temp_dir().join(format!("acs-rego-bundle-{}", remote_bundle_token()));
+    let dir = env::temp_dir().join(format!("acs-rego-bundle-{}", private_dir_token()));
     create_private_dir(&dir).map_err(|err| {
         RuntimeError::PolicyInvocationFailed(format!(
             "failed to create temp directory '{}' for remote rego bundle: {err}",
@@ -347,7 +454,7 @@ fn join_reader(handle: thread::JoinHandle<io::Result<Vec<u8>>>) -> io::Result<Ve
         .map_err(|_| io::Error::other("OPA output reader thread panicked"))?
 }
 
-fn opa_command_path_arg(path: impl AsRef<Path>) -> OsString {
+pub(crate) fn opa_command_path_arg(path: impl AsRef<Path>) -> OsString {
     strip_windows_verbatim_prefix(path.as_ref())
 }
 
@@ -558,7 +665,7 @@ fn process_error_output(output: &Output) -> String {
     }
 }
 
-fn truncate(value: &str) -> String {
+pub(crate) fn truncate(value: &str) -> String {
     let mut chars = value.chars();
     let truncated: String = chars.by_ref().take(ERROR_OUTPUT_LIMIT).collect();
     if chars.next().is_some() {
@@ -570,8 +677,33 @@ fn truncate(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{opa_command_path_arg, write_remote_bundle};
+    use super::{data_api_path, opa_command_path_arg, write_remote_bundle};
     use std::path::Path;
+
+    #[test]
+    fn data_api_path_maps_plain_data_references() {
+        assert_eq!(
+            data_api_path("data.vecna.policy.verdict").as_deref(),
+            Some("vecna/policy/verdict")
+        );
+        assert_eq!(data_api_path("data.a_2.b").as_deref(), Some("a_2/b"));
+    }
+
+    #[test]
+    fn data_api_path_refuses_anything_but_a_plain_data_reference() {
+        for query in [
+            "input.x",
+            "data.",
+            "data.a.",
+            "data.2x",
+            "data.a.b == 1",
+            "x := numbers.range(1, 10)",
+            "data.a[\"b\"]",
+            "data.a.b ",
+        ] {
+            assert_eq!(data_api_path(query), None, "{query:?} must stay on exec");
+        }
+    }
 
     #[test]
     fn opa_command_path_arg_strips_windows_verbatim_disk_prefix() {

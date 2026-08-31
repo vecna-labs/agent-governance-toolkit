@@ -4,7 +4,7 @@ import asyncio
 
 from mcp.server.fastmcp import FastMCP
 
-from agent_control_specification import InterventionPoint, guard_mcp_server
+from vecna_acs_engine import InterventionPoint, guard_mcp_server
 
 from _common import assert_blocked, control
 

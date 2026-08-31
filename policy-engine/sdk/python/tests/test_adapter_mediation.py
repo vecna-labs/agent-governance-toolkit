@@ -4,7 +4,7 @@ import json
 import unittest
 from collections import deque
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AdapterUnsupportedError,
     AgentControl,
     AgentControlBlocked,

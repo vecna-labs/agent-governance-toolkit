@@ -198,7 +198,16 @@ class NativeRuntimeClient:
             )
         )
 
+    def close(self) -> None:
+        """Release the native runtime now instead of at garbage collection. With
+        ``ACS_OPA_SERVER=1`` this is what kills the runtime's long-lived OPA server
+        processes, so a host swapping policy must close the outgoing client."""
+        self._native = None
+        self._closed = True
+
     async def evaluate_intervention_point(self, request: InterventionPointRequest) -> InterventionPointResult:
+        if getattr(self, "_closed", False):
+            raise RuntimeError("NativeRuntimeClient is closed")
         if self._native is None:
             raise NotImplementedError(
                 "Native Agent Control Specification Python bindings are not implemented yet; "

@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any, Mapping
 
-from agent_control_specification import AgentControl, AgentControlBlocked, InterventionPoint
+from vecna_acs_engine import AgentControl, AgentControlBlocked, InterventionPoint
 
 ROOT = Path(__file__).resolve().parents[4]
 ENV_PATH = ROOT / ".env"

@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from pathlib import Path
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AgentControl,
     Decision,
     InterventionPoint,
@@ -15,7 +15,7 @@ from agent_control_specification import (
 )
 
 try:
-    from agent_control_specification import _native  # noqa: F401
+    from vecna_acs_engine import _native  # noqa: F401
 except ImportError:
     _NATIVE_AVAILABLE = False
 else:
@@ -73,7 +73,7 @@ class MockPolicy:
         return {"decision": "allow"}
 
 
-@unittest.skipUnless(_NATIVE_AVAILABLE, "agent_control_specification._native extension is not built")
+@unittest.skipUnless(_NATIVE_AVAILABLE, "vecna_acs_engine._native extension is not built")
 class NativeRuntimeTests(unittest.TestCase):
     def test_parse_manifest_uses_native_yaml_semantics(self):
         parsed = parse_manifest(
@@ -324,7 +324,7 @@ intervention_points:
 """
 
 
-@unittest.skipUnless(_NATIVE_AVAILABLE, "agent_control_specification._native extension is not built")
+@unittest.skipUnless(_NATIVE_AVAILABLE, "vecna_acs_engine._native extension is not built")
 class ZeroConfigDefaultsTests(unittest.TestCase):
     @unittest.skipUnless(_opa_available(), "opa binary not available")
     def test_from_path_builds_with_no_dispatchers(self):

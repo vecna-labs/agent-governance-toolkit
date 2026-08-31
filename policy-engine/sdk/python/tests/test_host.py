@@ -8,7 +8,7 @@ import asyncio
 
 import pytest
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     DEFAULT_APPROVAL_TIMEOUT_SECONDS,
     AgentControlBlocked,
     AgentControlSuspended,

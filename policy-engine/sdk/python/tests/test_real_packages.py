@@ -19,7 +19,7 @@ from collections import deque
 from collections.abc import Mapping
 from typing import Any
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AdapterUnsupportedError,
     AgentControl,
     AgentControlBlocked,

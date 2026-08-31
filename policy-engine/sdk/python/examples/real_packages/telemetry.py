@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AgentControl,
     InMemoryTelemetrySink,
     JsonStdoutTelemetrySink,

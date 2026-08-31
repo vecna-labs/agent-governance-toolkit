@@ -81,7 +81,7 @@ async def main() -> None:
         print(f"skip: {exc}")
         return
 
-    from agent_control_specification import AgentControlBlocked, guard_foundry_agent
+    from vecna_acs_engine import AgentControlBlocked, guard_foundry_agent
 
     # Reuse the exact fail-closed judge policy and callables from the reference.
     from foundry_agents import TOOLS, build_control

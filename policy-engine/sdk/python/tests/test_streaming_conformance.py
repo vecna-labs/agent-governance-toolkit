@@ -15,8 +15,8 @@ import pathlib
 
 import pytest
 
-from agent_control_specification._adapters import _sse
-from agent_control_specification._adapters._errors import AdapterUnsupportedError
+from vecna_acs_engine._adapters import _sse
+from vecna_acs_engine._adapters._errors import AdapterUnsupportedError
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 STREAMING = ROOT / "tests" / "conformance" / "streaming"
