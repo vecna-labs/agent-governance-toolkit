@@ -70,7 +70,7 @@ import yaml
 # the same callables we govern, so the Foundry wiring is not faked.
 from azure.ai.agents.models import FunctionTool
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AgentControl,
     AgentControlBlocked,
     Decision,

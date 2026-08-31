@@ -4,7 +4,7 @@ import asyncio
 
 from crewai import Agent, Crew, LLM, Task
 
-from agent_control_specification import InterventionPoint, guard_crewai_crew
+from vecna_acs_engine import InterventionPoint, guard_crewai_crew
 
 from _common import assert_blocked, control
 

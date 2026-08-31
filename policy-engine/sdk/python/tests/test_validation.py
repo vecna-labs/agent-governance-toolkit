@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_control_specification.validation import validate_acs_artifacts
+from vecna_acs_engine.validation import validate_acs_artifacts
 
 MANIFEST_HEADER = """agent_control_specification_version: "0.3.1-beta"
 """

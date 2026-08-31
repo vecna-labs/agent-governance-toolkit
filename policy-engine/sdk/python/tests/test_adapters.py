@@ -6,7 +6,7 @@ from collections import deque
 from collections.abc import Mapping
 from unittest.mock import patch
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AdapterUnsupportedError,
     AgentControl,
     AgentControlBlocked,
@@ -756,7 +756,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
 
     def test_litellm_proxy_lazy_import_reports_missing_proxy_extra(self):
         with patch(
-            "agent_control_specification._adapters.litellm.import_module",
+            "vecna_acs_engine._adapters.litellm.import_module",
             side_effect=ImportError("missing proxy"),
         ):
             with self.assertRaisesRegex(ImportError, r"pip install 'litellm\[proxy\]'"):

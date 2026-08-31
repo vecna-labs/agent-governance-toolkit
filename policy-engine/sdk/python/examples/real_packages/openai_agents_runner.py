@@ -6,7 +6,7 @@ from agents import Agent, Runner
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from openai import AsyncAzureOpenAI
 
-from agent_control_specification import InterventionPoint, guard_openai_agents_runner
+from vecna_acs_engine import InterventionPoint, guard_openai_agents_runner
 
 from _common import assert_blocked, control, require_azure
 

@@ -4,7 +4,7 @@ import asyncio
 
 import litellm.proxy.proxy_server as proxy_server
 
-from agent_control_specification import InterventionPoint, guard_litellm_proxy
+from vecna_acs_engine import InterventionPoint, guard_litellm_proxy
 
 from _common import assert_blocked, call_asgi, control
 

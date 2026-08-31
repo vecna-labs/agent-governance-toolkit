@@ -6,7 +6,7 @@ import os
 import unittest
 from collections import deque
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AgentControl,
     Decision,
     EnforcementMode,
@@ -21,8 +21,8 @@ from agent_control_specification import (
     TelemetryEventType,
     Verdict,
 )
-from agent_control_specification._orchestration import _labels_from_client
-from agent_control_specification._telemetry import error_class_for, safe_reason_code
+from vecna_acs_engine._orchestration import _labels_from_client
+from vecna_acs_engine._telemetry import error_class_for, safe_reason_code
 
 
 # Every key a redaction-safe decision event is allowed to carry. Any key
@@ -290,7 +290,7 @@ class TelemetryAdapterTests(unittest.IsolatedAsyncioTestCase):
         # Adapters route through control.run_tool / evaluate_intervention_point,
         # the single instrumented funnel, so a sink-configured control emits
         # telemetry for adapter-driven calls with no adapter changes.
-        from agent_control_specification import guard_tool
+        from vecna_acs_engine import guard_tool
 
         sink = InMemoryTelemetrySink()
         control = AgentControl(
@@ -555,7 +555,7 @@ def _counter_point_value(metrics_data, name):
 
 
 try:
-    from agent_control_specification import _native  # noqa: F401
+    from vecna_acs_engine import _native  # noqa: F401
 except ImportError:
     _NATIVE_AVAILABLE = False
 else:

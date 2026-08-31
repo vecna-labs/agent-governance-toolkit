@@ -5,7 +5,7 @@ import asyncio
 from semantic_kernel import Kernel
 from semantic_kernel.functions import KernelArguments, kernel_function
 
-from agent_control_specification import InterventionPoint, guard_semantic_kernel_function
+from vecna_acs_engine import InterventionPoint, guard_semantic_kernel_function
 
 from _common import assert_blocked, control
 

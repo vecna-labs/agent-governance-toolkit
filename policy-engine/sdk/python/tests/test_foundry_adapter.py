@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from unittest.mock import patch
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AdapterUnsupportedError,
     AgentControl,
     AgentControlSuspended,
@@ -543,7 +543,7 @@ class FoundryAdapterTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch(
-            "agent_control_specification._adapters.foundry._tool_output_factory", return_value=None
+            "vecna_acs_engine._adapters.foundry._tool_output_factory", return_value=None
         ):
             await guarded.create_thread_and_run("agent-1", content="go", poll_interval=0)
 

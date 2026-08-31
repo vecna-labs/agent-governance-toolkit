@@ -5,7 +5,7 @@ import json
 import unittest
 from pathlib import Path
 
-from agent_control_specification import (
+from vecna_acs_engine import (
     AgentControl,
     AgentControlBlocked,
     ApprovalResolution,
@@ -18,7 +18,7 @@ from agent_control_specification import (
 )
 
 try:
-    from agent_control_specification import _native  # noqa: F401
+    from vecna_acs_engine import _native  # noqa: F401
 except ImportError:
     _NATIVE_AVAILABLE = False
 else:
@@ -110,7 +110,7 @@ class PythonCanonicalParityTests(unittest.TestCase):
             )
         self.assertEqual(raised.exception.result.verdict.reason, "runtime_error:approval_action_mismatch")
 
-    @unittest.skipUnless(_NATIVE_AVAILABLE, "agent_control_specification._native extension is not built")
+    @unittest.skipUnless(_NATIVE_AVAILABLE, "vecna_acs_engine._native extension is not built")
     def test_native_runtime_uses_canonical_resource_limit_defaults(self):
         fixture = load_fixture("resource_limits_canonical.json")
         annotator_count = fixture["defaults"]["max_annotators_per_point"] + 1
