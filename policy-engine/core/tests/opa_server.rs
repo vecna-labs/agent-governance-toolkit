@@ -65,9 +65,17 @@ fn server_mode_times_out_pathological_eval_without_falling_back() {
     let Some(runner) = require_opa_or_skip() else {
         return;
     };
+    // Input-dependent on purpose: a constant body can be folded at server load and
+    // answered instantly (OPA 0.x does), which would make this test pass vacuously.
     let slow = scratch_file(
         "slow.rego",
-        "package slow\n\nverdict := {\"decision\": \"allow\"} if {\n\tcount(numbers.range(1, 100000000)) > 0\n}\n",
+        concat!(
+            "package slow\n\nimport rego.v1\n\nnums(n) := numbers.range(1, n)\n\n",
+            "verdict := {\"decision\": \"allow\"} if {\n",
+            "\tn := 1500 + count(input.policy_target.value.text)\n",
+            "\tprods := {p |\n\t\tsome x in nums(n)\n\t\tsome y in nums(n)\n\t\tp := x * y\n\t}\n",
+            "\tcount(prods) > 0\n}\n",
+        ),
     );
     let runner = runner
         .with_server_mode(true)
