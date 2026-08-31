@@ -26,6 +26,8 @@ pub mod manifest;
 // conditions must wire their own `PolicyDispatcher` implementation.
 #[cfg(feature = "opa")]
 pub mod opa;
+#[cfg(all(feature = "opa", unix))]
+mod opa_server;
 pub mod paths;
 pub mod perf_telemetry;
 pub mod policy;

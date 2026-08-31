@@ -56,6 +56,21 @@ configured by `gh repo fork` but nothing is ever pushed there.
    its `agent_control_specification_core` dependency's `features = [...]`,
    so Cargo's feature unification already builds it in for every wheel.
 
+7. `policy-engine/core/src/opa_server.rs` (new) + `opa.rs`/`lib.rs` wiring: a
+   third env lever, `ACS_OPA_SERVER=1`, makes the bundled Rego dispatcher keep
+   one long-lived `opa run --server` child per policy source set (Unix domain
+   socket in a 0700 scratch dir) and answer evaluations over its Data API
+   instead of forking `opa eval` per evaluation (~14 ms → ~0.3 ms measured
+   through the Python wheel). Only plain `data.a.b.c` queries over local
+   `data_paths` are served this way; bundles, `bundle_url`, and richer queries
+   stay on the exec path, as does any evaluation whose server cannot be
+   reached — so the lever can change latency but never an outcome. A blown
+   `ACS_OPA_TIMEOUT_MS` stays the same fail-closed error as exec mode. Servers
+   die with their runtime; `NativeRuntimeClient` gained `close()` so a host
+   swapping policy can retire them deterministically. Unix-only; the lever is
+   ignored elsewhere. Built for Vecna's warden daemon (vecna VEC-1462), which
+   evaluates two scopes per tool-call decision.
+
 The rename exists for one reason: a stock upstream `agent-control-specification`
 wheel must never silently satisfy a `vecna_acs_engine` pin.
 
